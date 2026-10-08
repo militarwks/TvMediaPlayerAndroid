@@ -1,0 +1,44 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Grant execute permission for gradlew
+        run: |
+          if [ -f gradlew ]; then chmod +x gradlew; fi
+
+      - name: Build Debug APK
+        run: |
+          # Use system gradle if no wrapper
+          if [ -f gradlew ]; then
+            ./gradlew assembleDebug --no-daemon
+          else
+            gradle assembleDebug --no-daemon || (
+              # bootstrap wrapper then build
+              gradle wrapper --gradle-version 8.5
+              ./gradlew assembleDebug --no-daemon
+            )
+          fi
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: TVMediaPlayer-debug
+          path: app/build/outputs/apk/debug/*.apk
